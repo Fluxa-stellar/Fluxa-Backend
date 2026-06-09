@@ -1,0 +1,206 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  avatar        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Stellar
+  stellarAddress String? @unique // Public key
+  isVerified    Boolean  @default(false)
+
+  // Relations
+  wallets         StellarWallet[]
+  savingsGoals    SavingsGoal[]
+  recurringDeposits RecurringDeposit[]
+  transactions    Transaction[]
+  budgets         Budget[]
+  subscriptions   Subscription[]
+  aiInsights      AIInsight[]
+
+  @@map("users")
+}
+
+model StellarWallet {
+  id            String   @id @default(cuid())
+  userId        String
+  publicKey     String   @unique
+  isPrimary     Boolean  @default(false)
+  label         String?
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("stellar_wallets")
+}
+
+model SavingsGoal {
+  id            String     @id @default(cuid())
+  userId        String
+  name          String
+  description   String?
+  targetAmount  Decimal    @db.Decimal(18, 6)
+  currentAmount Decimal    @default(0) @db.Decimal(18, 6)
+  currency      String     @default("USDC")
+  deadline      DateTime?
+  isAchieved    Boolean    @default(false)
+  status        GoalStatus @default(ACTIVE)
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+
+  @@map("savings_goals")
+}
+
+enum GoalStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+model RecurringDeposit {
+  id            String       @id @default(cuid())
+  userId        String
+  goalId        String?
+  amount        Decimal      @db.Decimal(18, 6)
+  frequency     Frequency
+  dayOfWeek     Int?         // 0-6 (Sunday-Saturday)
+  dayOfMonth    Int?         // 1-31
+  nextExecution DateTime
+  isActive      Boolean      @default(true)
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal          SavingsGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  @@map("recurring_deposits")
+}
+
+enum Frequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+}
+
+model Transaction {
+  id            String      @id @default(cuid())
+  userId        String
+  goalId        String?
+  amount        Decimal     @db.Decimal(18, 6)
+  type          TransactionType
+  status        TransactionStatus @default(COMPLETED)
+  description   String?
+  txHash        String?     // Stellar transaction hash
+  metadata      Json?
+
+  createdAt     DateTime    @default(now())
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal          SavingsGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+  INTEREST
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model Budget {
+  id            String   @id @default(cuid())
+  userId        String
+  category      String
+  monthlyLimit  Decimal  @db.Decimal(18, 6)
+  spent         Decimal  @default(0) @db.Decimal(18, 6)
+  period        String   @default("monthly") // monthly, weekly
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("budgets")
+}
+
+model Subscription {
+  id            String     @id @default(cuid())
+  userId        String     @unique
+  plan          PlanType
+  status        SubscriptionStatus @default(ACTIVE)
+  expiresAt     DateTime?
+  stripeId      String?    // If using Stripe
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+enum PlanType {
+  FREE
+  PREMIUM
+  FAMILY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PAST_DUE
+}
+
+model AIInsight {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String   // "savings_tip", "spending_alert", "budget_suggestion"
+  title         String
+  content       String
+  isRead        Boolean  @default(false)
+  metadata      Json?
+
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_insights")
+}
+
