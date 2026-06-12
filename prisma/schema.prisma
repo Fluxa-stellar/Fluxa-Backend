@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,107 +7,96 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
-  id          String   @id @default(uuid())
-  email       String   @unique
-  password    String
-  role        UserRole @default(BUSINESS_USER)
+  id       String   @id @default(uuid())
+  email    String   @unique
+  password String
+  role     UserRole @default(BUSINESS_USER)
 
-  businessId  String?
-  business    Business? @relation(fields: [businessId], references: [id])
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
-
-
 
 model Business {
-  id          String   @id @default(uuid())
-  name        String
-  country     String
+  id      String @id @default(uuid())
+  name    String
+  country String
 
-  kycStatus   KYCStatus @default(PENDING)
+  kycStatus KYCStatus @default(PENDING)
 
-  users       User[]
-  wallets     Wallet[]
+  users        User[]
+  wallets      Wallet[]
+  transactions Transaction[]
+  invoices     Invoice[]
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
-
-
 
 model Wallet {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  businessId  String
-  business    Business @relation(fields: [businessId], references: [id])
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
 
-  currency    CurrencyType
-  balance     Decimal  @default(0)
+  currency CurrencyType
+  balance  Decimal      @default(0)
 
-  stellarAddress String?  // USDC on Stellar wallet
+  stellarAddress String? // USDC on Stellar wallet
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
-
-
 
 model Transaction {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  businessId  String
-  business    Business @relation(fields: [businessId], references: [id])
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
 
-  type        TransactionType
-  amount      Decimal
-  currency    CurrencyType
+  type     TransactionType
+  amount   Decimal
+  currency CurrencyType
 
-  status      TransactionStatus @default(PENDING)
+  status TransactionStatus @default(PENDING)
 
-  reference   String?  // Stellar tx hash or bank ref
+  reference String? // Stellar tx hash or bank ref
 
-  metadata    Json?
+  metadata Json?
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
-
-
 
 model FxRate {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  from        CurrencyType
-  to          CurrencyType
+  from CurrencyType
+  to   CurrencyType
 
-  rate        Decimal
+  rate Decimal
 
-  source      String
+  source String
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
-
-
 
 model Invoice {
-  id          String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  businessId  String
-  business    Business @relation(fields: [businessId], references: [id])
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
 
-  clientName  String
-  amount      Decimal
-  currency    CurrencyType
+  clientName String
+  amount     Decimal
+  currency   CurrencyType
 
-  status      InvoiceStatus @default(PENDING)
+  status InvoiceStatus @default(PENDING)
 
-  dueDate     DateTime?
+  dueDate DateTime?
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
-
-
 
 enum UserRole {
   ADMIN

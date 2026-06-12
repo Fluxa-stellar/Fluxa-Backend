@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 const DATABASE_URL = process.env.DATABASE_URL;
 
 
@@ -15,15 +17,14 @@ const options = {
   },
 };
 
-// PrismaService constructor can accept this config.
 
 export default options;
 
-  datasources: {
-    db: {
-      url: DATABASE_URL,
+datasources: {
+  db: {
+    url: DATABASE_URL,
     },
-  },
+},
 };
 
 export default options;
