@@ -1,13 +1,3 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-}
-
-
-
 
 generator client {
   provider = "prisma-client-js"
@@ -18,123 +8,132 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  name          String?
-  avatar        String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  role        UserRole @default(BUSINESS_USER)
 
-  // Stellar
-  stellarAddress String? @unique // Public key
-  isVerified    Boolean  @default(false)
+  businessId  String?
+  business    Business? @relation(fields: [businessId], references: [id])
 
-  // Relations
-  wallets         StellarWallet[]
-  savingsGoals    SavingsGoal[]
-  recurringDeposits RecurringDeposit[]
-  transactions    Transaction[]
-  budgets         Budget[]
-  subscriptions   Subscription[]
-  aiInsights      AIInsight[]
-
-  @@map("users")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
-model StellarWallet {
-  id            String   @id @default(cuid())
-  userId        String
-  publicKey     String   @unique
-  isPrimary     Boolean  @default(false)
-  label         String?
-  createdAt     DateTime @default(now())
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("stellar_wallets")
+model Business {
+  id          String   @id @default(uuid())
+  name        String
+  country     String
+
+  kycStatus   KYCStatus @default(PENDING)
+
+  users       User[]
+  wallets     Wallet[]
+
+  createdAt   DateTime @default(now())
 }
 
-model SavingsGoal {
-  id            String     @id @default(cuid())
-  userId        String
-  name          String
-  description   String?
-  targetAmount  Decimal    @db.Decimal(18, 6)
-  currentAmount Decimal    @default(0) @db.Decimal(18, 6)
-  currency      String     @default("USDC")
-  deadline      DateTime?
-  isAchieved    Boolean    @default(false)
-  status        GoalStatus @default(ACTIVE)
 
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
 
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions  Transaction[]
+model Wallet {
+  id          String   @id @default(uuid())
 
-  @@map("savings_goals")
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id])
+
+  currency    CurrencyType
+  balance     Decimal  @default(0)
+
+  stellarAddress String?  // USDC on Stellar wallet
+
+  createdAt   DateTime @default(now())
 }
 
-enum GoalStatus {
-  ACTIVE
-  PAUSED
-  COMPLETED
-  CANCELLED
-}
 
-model RecurringDeposit {
-  id            String       @id @default(cuid())
-  userId        String
-  goalId        String?
-  amount        Decimal      @db.Decimal(18, 6)
-  frequency     Frequency
-  dayOfWeek     Int?         // 0-6 (Sunday-Saturday)
-  dayOfMonth    Int?         // 1-31
-  nextExecution DateTime
-  isActive      Boolean      @default(true)
-
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  goal          SavingsGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
-
-  @@map("recurring_deposits")
-}
-
-enum Frequency {
-  DAILY
-  WEEKLY
-  BIWEEKLY
-  MONTHLY
-  QUARTERLY
-}
 
 model Transaction {
-  id            String      @id @default(cuid())
-  userId        String
-  goalId        String?
-  amount        Decimal     @db.Decimal(18, 6)
-  type          TransactionType
-  status        TransactionStatus @default(COMPLETED)
-  description   String?
-  txHash        String?     // Stellar transaction hash
-  metadata      Json?
+  id          String   @id @default(uuid())
 
-  createdAt     DateTime    @default(now())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id])
 
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  goal          SavingsGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  type        TransactionType
+  amount      Decimal
+  currency    CurrencyType
 
-  @@map("transactions")
+  status      TransactionStatus @default(PENDING)
+
+  reference   String?  // Stellar tx hash or bank ref
+
+  metadata    Json?
+
+  createdAt   DateTime @default(now())
+}
+
+
+
+model FxRate {
+  id          String   @id @default(uuid())
+
+  from        CurrencyType
+  to          CurrencyType
+
+  rate        Decimal
+
+  source      String
+
+  createdAt   DateTime @default(now())
+}
+
+
+
+model Invoice {
+  id          String   @id @default(uuid())
+
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id])
+
+  clientName  String
+  amount      Decimal
+  currency    CurrencyType
+
+  status      InvoiceStatus @default(PENDING)
+
+  dueDate     DateTime?
+
+  createdAt   DateTime @default(now())
+}
+
+
+
+enum UserRole {
+  ADMIN
+  BUSINESS_USER
+  ACCOUNTANT
+  VIEWER
+}
+
+enum CurrencyType {
+  USD
+  EUR
+  GBP
+  NGN
+  KES
+  GHS
+  ZAR
+  USDC
+  USDT
 }
 
 enum TransactionType {
   DEPOSIT
   WITHDRAWAL
   TRANSFER
-  INTEREST
+  CONVERSION
 }
 
 enum TransactionStatus {
@@ -143,64 +142,14 @@ enum TransactionStatus {
   FAILED
 }
 
-model Budget {
-  id            String   @id @default(cuid())
-  userId        String
-  category      String
-  monthlyLimit  Decimal  @db.Decimal(18, 6)
-  spent         Decimal  @default(0) @db.Decimal(18, 6)
-  period        String   @default("monthly") // monthly, weekly
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("budgets")
+enum KYCStatus {
+  PENDING
+  VERIFIED
+  REJECTED
 }
 
-model Subscription {
-  id            String     @id @default(cuid())
-  userId        String     @unique
-  plan          PlanType
-  status        SubscriptionStatus @default(ACTIVE)
-  expiresAt     DateTime?
-  stripeId      String?    // If using Stripe
-
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("subscriptions")
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
 }
-
-enum PlanType {
-  FREE
-  PREMIUM
-  FAMILY
-}
-
-enum SubscriptionStatus {
-  ACTIVE
-  CANCELLED
-  EXPIRED
-  PAST_DUE
-}
-
-model AIInsight {
-  id            String   @id @default(cuid())
-  userId        String
-  type          String   // "savings_tip", "spending_alert", "budget_suggestion"
-  title         String
-  content       String
-  isRead        Boolean  @default(false)
-  metadata      Json?
-
-  createdAt     DateTime @default(now())
-
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("ai_insights")
-}
-
