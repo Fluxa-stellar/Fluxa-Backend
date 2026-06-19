@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { FxRateService } from './fx-rate.service';
 
-@Module({})
+@Module({
+  providers: [FxRateService]
+})
 export class FxRateModule {}
