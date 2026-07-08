@@ -9,10 +9,10 @@ import { TransactionModule } from './transaction/transaction.module';
 import { WalletModule } from './wallet/wallet.module';
 import { FxRateModule } from './fx-rate/fx-rate.module';
 import { InvoiceModule } from './invoice/invoice.module';
-import { CommonModule } from './common/common.module';
+import { AuthsModule } from './auths/auths.module';
 
 @Module({
-  imports: [UserModule, PrismaModule, BusinessModule, TransactionModule, WalletModule, FxRateModule, InvoiceModule, CommonModule],
+  imports: [UserModule, PrismaModule, BusinessModule, TransactionModule, WalletModule, FxRateModule, InvoiceModule, AuthsModule],
   controllers: [AppController],
   providers: [AppService, PrismaService],
   exports: [PrismaService],
